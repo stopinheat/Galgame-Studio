@@ -148,7 +148,7 @@ AI出图 → 回到工具 → 点提示词旁边的"📤导入素材" → 选文
 | **前端**     | HTML + CSS + JavaScript (Vanilla) |
 | **后端**     | Python 3.10+ / FastAPI + uvicorn  |
 | **AI 调用**  | OpenAI Python SDK（兼容所有API）  |
-| **输出引擎** | Ren'Py 7+                         |
+| **输出引擎** | Ren'Py 8+                         |
 | **预览**     | 纯前端 Canvas + DOM               |
 | **素材管理** | 本地文件系统，自动命名归类        |
 
