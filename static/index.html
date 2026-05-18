@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galgame Studio</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="app-container">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-logo">
+      <span class="logo-icon">🎮</span>
+      <h1>Galgame <span>Studio</span></h1>
+    </div>
+    <div class="header-tagline">小说→剧本→提示词→打包</div>
+    <div class="header-controls">
+      <select id="lang-select" class="lang-select">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+      </select>
+    </div>
+    <div class="header-steps">
+      <div class="step-indicator active" data-step="1">
+        <span class="step-num">1</span>
+        <span class="step-label">上传小说</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" data-step="2">
+        <span class="step-num">2</span>
+        <span class="step-label">场景分析</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" data-step="3">
+        <span class="step-num">3</span>
+        <span class="step-label">生成提示词</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" data-step="4">
+        <span class="step-num">4</span>
+        <span class="step-label">打包导出</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- STEP 1: Upload -->
+    <section id="step-upload" class="step-panel active">
+      <div class="panel-card upload-card">
+        <div class="card-icon">📖</div>
+        <h2>第一步：上传小说</h2>
+        <p class="card-desc">支持 .txt / .md 格式，大小无限制</p>
+        
+        <div class="upload-area" id="upload-area">
+          <div class="upload-inner">
+            <svg class="upload-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <p class="upload-text">拖拽小说文件到此处</p>
+            <p class="upload-hint">或点击选择文件</p>
+            <input type="file" id="file-input" accept=".txt,.md,.text" hidden>
+          </div>
+        </div>
+
+        <div class="config-grid" style="margin-top:1.5rem;">
+          <div class="config-field">
+            <label>📋 项目模板</label>
+            <select id="template-select">
+              <option value="none">不使用模板</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="novel-preview" class="novel-preview" style="display:none;">
+          <div class="preview-header">
+            <span class="preview-title" id="preview-title"></span>
+            <span class="preview-badge" id="preview-info"></span>
+          </div>
+          <div class="preview-text" id="preview-text"></div>
+          <div class="preview-stats" id="preview-stats"></div>
+        </div>
+
+        <div id="upload-status" class="status-msg" style="display:none;"></div>
+      </div>
+    </section>
+
+    <!-- STEP 2: Analyze -->
+    <section id="step-analyze" class="step-panel">
+      <div class="panel-card">
+        <div class="card-icon">🤖</div>
+        <h2>第二步：AI场景分析</h2>
+        <p class="card-desc">使用LLM将小说拆解为视觉小说分镜脚本</p>
+
+        <div class="config-grid">
+          <div class="config-field">
+            <label>API 地址</label>
+            <input type="text" id="api-base" value="https://api.openai.com/v1" placeholder="https://api.openai.com/v1">
+          </div>
+          <div class="config-field">
+            <label>API Key</label>
+            <input type="password" id="api-key" placeholder="sk-...">
+            <span class="field-hint">不会存储到服务器</span>
+          </div>
+          <div class="config-field">
+            <label>模型</label>
+            <select id="model-select">
+              <option value="gpt-4o" data-api-base="https://api.openai.com/v1">GPT-4o (OpenAI)</option>
+              <option value="gpt-4o-mini" data-api-base="https://api.openai.com/v1">GPT-4o-mini (OpenAI)</option>
+              <option value="deepseek-chat" data-api-base="https://api.deepseek.com/v1">DeepSeek V3</option>
+              <option value="deepseek-reasoner" data-api-base="https://api.deepseek.com/v1">DeepSeek R1</option>
+              <option value="claude-3-5-sonnet-20241022" data-api-base="https://api.anthropic.com/v1">Claude 3.5 Sonnet</option>
+              <option value="qwen-plus" data-api-base="https://dashscope.aliyuncs.com/compatible-mode/v1">通义千问 Plus</option>
+              <option value="groq-llama" data-api-base="https://api.groq.com/openai/v1">Groq Llama</option>
+              <option value="custom" data-api-base="">自定义...</option>
+            </select>
+          </div>
+          <div class="config-field" id="custom-model-field" style="display:none;">
+            <label>自定义模型名</label>
+            <input type="text" id="custom-model" placeholder="输入模型名称">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-analyze">
+          <span class="btn-icon">🔍</span> 开始分析
+        </button>
+        <div id="analyze-status" class="status-msg" style="display:none;"></div>
+      </div>
+
+      <!-- Scene list after analysis -->
+      <div id="scene-list-container" style="display:none;">
+        <div class="section-header">
+          <h3>📋 场景列表</h3>
+          <span id="scene-count" class="badge"></span>
+        </div>
+        <div id="scene-list" class="scene-list"></div>
+      </div>
+    </section>
+
+    <!-- STEP 3: Prompts -->
+    <section id="step-prompts" class="step-panel">
+      <div class="panel-card">
+        <div class="card-icon">✨</div>
+        <h2>第三步：生成AI提示词</h2>
+        <p class="card-desc">一键生成所有AI工具的提示词和操作指南</p>
+
+        <div class="config-grid" style="grid-template-columns:1fr;">
+          <div class="config-field">
+            <label>画风选择</label>
+            <select id="style-select">
+              <option value="anime_default">日系动漫标准</option>
+              <option value="anime_realistic">日系写实</option>
+              <option value="light_novel">轻小说插画风</option>
+              <option value="chinese_ink">水墨古风</option>
+              <option value="manga_style">黑白漫画</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-generate-prompts">
+          <span class="btn-icon">⚡</span> 生成提示词
+        </button>
+
+        <button class="btn btn-secondary" id="btn-export-prompts" style="display:none;">
+          <span class="btn-icon">📥</span> 导出提示词清单 (.md)
+        </button>
+
+        <div id="prompts-status" class="status-msg" style="display:none;"></div>
+      </div>
+
+      <!-- Prompt tabs -->
+      <div id="prompts-container" style="display:none;">
+        <div class="prompts-tabs">
+          <button class="tab-btn active" data-tab="tab-characters">👤 角色立绘</button>
+          <button class="tab-btn" data-tab="tab-backgrounds">🖼️ 背景</button>
+          <button class="tab-btn" data-tab="tab-cgs">🎬 事件CG</button>
+          <button class="tab-btn" data-tab="tab-ui">🖥️ 标题/UI</button>
+          <button class="tab-btn" data-tab="tab-bgm">🎵 BGM</button>
+          <button class="tab-btn" data-tab="tab-voice">🎙️ 配音</button>
+          <button class="tab-btn" data-tab="tab-tools">🛠️ 工具推荐</button>
+        </div>
+
+        <div class="tab-content">
+          <div id="tab-characters" class="tab-panel active"></div>
+          <div id="tab-backgrounds" class="tab-panel"></div>
+          <div id="tab-cgs" class="tab-panel"></div>
+          <div id="tab-ui" class="tab-panel"></div>
+          <div id="tab-bgm" class="tab-panel"></div>
+          <div id="tab-voice" class="tab-panel"></div>
+          <div id="tab-tools" class="tab-panel"></div>
+        </div>
+
+        <!-- 操作区 -->
+        <div id="prompts-actions" style="margin-top:1.5rem;padding:1.25rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);">
+          <h4 style="font-family:var(--font-serif);margin-bottom:0.75rem;">📦 准备打包</h4>
+          <div class="config-grid" style="margin-bottom:0.75rem;">
+            <div class="config-field">
+              <label>📁 素材目录（可选，稍后手动放入也行）</label>
+              <input type="text" id="asset-dir" placeholder="留空跳过，稍后把素材放到项目images/audio目录">
+            </div>
+            <div class="config-field">
+              <label>🎮 项目名称</label>
+              <input type="text" id="project-name-v3" placeholder="输入游戏名称" value="MyVisualNovel">
+            </div>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btn-pack-from-step3">
+              <span class="btn-icon">🎮</span> 跳过素材，直接打包项目
+            </button>
+            <button class="btn btn-secondary" id="btn-scan-dir">
+              <span class="btn-icon">📊</span> 检测素材目录
+            </button>
+            <button class="btn btn-secondary" id="btn-clear-staging" style="color:var(--error);border-color:rgba(248,113,113,0.3);">
+              <span class="btn-icon">🗑️</span> 清空已导入素材
+            </button>
+          </div>
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">
+            💡 温馨提示：生成提示词后，先复制提示词去AI工具生成素材，再把素材放到项目目录。不着急的话建议做了素材再打包。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 4: Pack -->
+    <section id="step-pack" class="step-panel">
+      <div class="panel-card">
+        <div class="card-icon">📦</div>
+        <h2>第四步：打包 Ren'Py 项目</h2>
+        <p class="card-desc">输入项目名称，自动生成完整Ren'Py工程</p>
+
+        <div class="config-grid" style="grid-template-columns:1fr;">
+          <div class="config-field">
+            <label>项目名称</label>
+            <input type="text" id="project-name" placeholder="输入游戏名称" value="MyVisualNovel">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-pack">
+          <span class="btn-icon">🎮</span> 生成 Ren'Py 项目
+        </button>
+        <div id="pack-status" class="status-msg" style="display:none;"></div>
+
+        <!-- 素材管理面板 -->
+        <div id="asset-manager" class="asset-manager" style="display:none;">
+          <div class="section-header">
+            <h3>📦 素材管理</h3>
+            <span id="asset-count" class="badge"></span>
+          </div>
+          <p class="card-desc" style="margin-bottom:1rem;">已导入的素材将自动归类到对应目录</p>
+          
+          <div class="asset-category-grid" id="asset-category-grid"></div>
+          
+          <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btn-auto-sort">
+              <span class="btn-icon">🔄</span> 一键归类到项目
+            </button>
+            <button class="btn btn-secondary" id="btn-refresh-assets">
+              <span class="btn-icon">🔄</span> 刷新
+            </button>
+          </div>
+          <div id="sort-result" style="margin-top:1rem;"></div>
+        </div>
+
+        <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+          <button class="btn btn-secondary" id="btn-preview">
+            <span class="btn-icon">👁️</span> 浏览器预览
+          </button>
+          <button class="btn btn-secondary" id="btn-scan-assets" style="display:none;">
+            <span class="btn-icon">📊</span> 检测素材
+          </button>
+        </div>
+        <div id="asset-scan-result" style="display:none;margin-top:1rem;"></div>
+      </div>
+    </section>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <footer class="app-footer">
+    <span>Galgame Studio v0.2.1</span>
+    <span class="footer-divider">·</span>
+    <span>小说→分镜→提示词→打包 一站式工具</span>
+  </footer>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

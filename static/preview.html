@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>预览 · Galgame Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+/* ============================================ */
+/*  Galgame Studio - Visual Novel Preview       */
+/*  Immersive dark VN player                    */
+/* ============================================ */
+
+:root {
+  --bg-deep: #0a0e17;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2332;
+  --bg-input: #0f1724;
+  --border: #1e2a3a;
+  --border-active: #3a4a5a;
+
+  --text-primary: #e8e3dc;
+  --text-secondary: #8b929a;
+  --text-muted: #5a6270;
+
+  --accent-gold: #d4a574;
+  --accent-gold-dim: #b08d5c;
+  --accent-rose: #c97b84;
+  --accent-teal: #6db3a8;
+  --accent-purple: #8b7ec8;
+  --accent-blue: #5b8dc7;
+
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --error: #f87171;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 30px rgba(212,165,116,0.08);
+
+  --font-serif: 'Noto Serif SC', 'SimSun', serif;
+  --font-sans: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'Space Mono', 'Cascadia Code', monospace;
+
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Preview player specific */
+  --namebox-bg: rgba(10,14,23,0.85);
+  --textbox-bg: rgba(8,12,24,0.88);
+  --sprite-offset: 80px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Loading Screen ===== */
+
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-deep);
+  transition: opacity 0.6s ease;
+}
+
+#loading-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-ring {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.loading-text {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Main Layout ===== */
+
+#preview-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  position: relative;
+}
+
+/* ===== Scene List Sidebar ===== */
+
+.sidebar-toggle {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: rgba(17,24,39,0.8);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all var(--transition);
+  backdrop-filter: blur(12px);
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-card);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+#scene-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 320px;
+  z-index: 200;
+  background: rgba(10,14,23,0.95);
+  border-right: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#scene-sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-header h3 {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sidebar-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0.25rem;
+  transition: color var(--transition);
+}
+
+.sidebar-close:hover { color: var(--text-primary); }
+
+.sidebar-scene-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.sidebar-scene-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scene-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scene-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.sidebar-scene-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1px solid transparent;
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-scene-item:hover {
+  background: rgba(212,165,116,0.04);
+  border-color: rgba(212,165,116,0.08);
+}
+
+.sidebar-scene-item.active {
+  background: rgba(212,165,116,0.08);
+  border-color: rgba(212,165,116,0.2);
+}
+
+.sidebar-scene-index {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: right;
+}
+
+.sidebar-scene-item.active .sidebar-scene-index {
+  color: var(--accent-gold);
+}
+
+.sidebar-scene-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-scene-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-scene-mood {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.mood-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ===== Background Layer ===== */
+
+#bg-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.8s ease;
+  overflow: hidden;
+}
+
+#bg-layer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(212,165,116,0.03) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(139,126,200,0.02) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.bg-ambient {
+  position: absolute;
+  inset: 0;
+  transition: opacity 1s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bg-ambient.visible {
+  opacity: 1;
+}
+
+.bg-scene-title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(232,227,220,0.2);
+  letter-spacing: 0.15em;
+  text-align: center;
+  max-width: 80%;
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+  transition: all 0.7s ease;
+}
+
+.bg-scene-location {
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  color: rgba(232,227,220,0.1);
+  letter-spacing: 0.3em;
+  margin-top: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== Characters Layer ===== */
+
+#characters-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  padding-bottom: 180px;
+}
+
+.character-sprite {
+  position: relative;
+  width: 160px;
+  height: 280px;
+  margin: 0 20px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.character-sprite.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.character-sprite.speaking {
+  filter: brightness(1.1);
+}
+
+.character-sprite.non-speaking {
+  filter: brightness(0.4) saturate(0.3);
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.sprite-body {
+  width: 120px;
+  height: 220px;
+  border-radius: 60px 60px 20px 20px;
+  position: relative;
+  transition: all 0.5s ease;
+}
+
+.sprite-body::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: inherit;
+  filter: brightness(0.85);
+}
+
+.sprite-body::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  width: 80%;
+  height: 20px;
+  border-radius: 0 0 10px 10px;
+  filter: brightness(0.6);
+}
+
+.sprite-name-label {
+  position: absolute;
+  bottom: -28px;
+  font-family: var(--font-serif);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  transition: color var(--transition);
+}
+
+.character-sprite.speaking .sprite-name-label {
+  color: var(--accent-gold);
+}
+
+/* ===== Textbox Area ===== */
+
+#textbox-area {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 10% 2rem;
+  z-index: 50;
+  cursor: pointer;
+}
+
+#namebox {
+  display: inline-block;
+  background: var(--namebox-bg);
+  border: 1px solid rgba(212,165,116,0.25);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 0.45rem 1.2rem 0.35rem;
+  margin-left: 0.5rem;
+  backdrop-filter: blur(12px);
+  transition: opacity 0.4s ease;
+}
+
+#namebox-text {
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+  letter-spacing: 0.08em;
+}
+
+#namebox.narrator {
+  border-color: rgba(139,146,154,0.2);
+}
+
+#namebox.narrator #namebox-text {
+  color: var(--text-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+#textbox {
+  background: var(--textbox-bg);
+  border: 1px solid rgba(30,42,58,0.6);
+  border-radius: 12px;
+  padding: 1.25rem 1.75rem;
+  min-height: 120px;
+  max-height: 200px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 -4px 40px rgba(0,0,0,0.5);
+  position: relative;
+  overflow: hidden;
+  transition: min-height var(--transition);
+}
+
+#textbox.with-choices {
+  min-height: auto;
+}
+
+#dialogue-text {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.9;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+#dialogue-text .cursor-blink {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--accent-gold);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+#textbox-advance-hint {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  animation: pulse-hint 2s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+#textbox-advance-hint.visible {
+  opacity: 1;
+}
+
+@keyframes pulse-hint {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+/* ===== Choices ===== */
+
+#choices-container {
+  padding: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.choice-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 1.2rem;
+  background: rgba(15,23,36,0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+}
+
+.choice-btn:hover {
+  background: rgba(212,165,116,0.08);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+  padding-left: 1.5rem;
+}
+
+.choice-btn::before {
+  content: '▸';
+  position: absolute;
+  left: 0.5rem;
+  color: var(--accent-gold);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.choice-btn:hover::before {
+  opacity: 1;
+}
+
+/* ===== Scene Nav ===== */
+
+#scene-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 60;
+  display: flex;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+#scene-nav.left {
+  left: 1rem;
+}
+
+#scene-nav.right {
+  right: 1rem;
+}
+
+.nav-btn {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(17,24,39,0.6);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all var(--transition);
+  backdrop-filter: blur(8px);
+}
+
+.nav-btn:hover {
+  background: rgba(212,165,116,0.12);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.nav-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+/* ===== Scene Info Bar ===== */
+
+#scene-info-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.6rem 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  z-index: 50;
+  background: linear-gradient(to bottom, rgba(10,14,23,0.7) 0%, transparent 100%);
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+
+#scene-info-bar.hidden {
+  opacity: 0;
+}
+
+.scene-info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.scene-info-item .label {
+  color: rgba(139,146,154,0.5);
+}
+
+.scene-info-item .value {
+  color: var(--text-secondary);
+}
+
+.scene-info-item .value.gold {
+  color: var(--accent-gold);
+}
+
+/* ===== BGM Mood Indicator ===== */
+
+#bgm-indicator {
+  position: fixed;
+  bottom: 1rem;
+  right: 1.5rem;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: rgba(17,24,39,0.6);
+  border: 1px solid rgba(30,42,58,0.5);
+  border-radius: 99px;
+  backdrop-filter: blur(8px);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+
+#bgm-indicator .wave-icon {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+
+#bgm-indicator .wave-bar {
+  width: 3px;
+  background: var(--accent-teal);
+  border-radius: 1px;
+  opacity: 0.5;
+  animation: wave 1.2s ease-in-out infinite;
+}
+
+#bgm-indicator .wave-bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+#bgm-indicator .wave-bar:nth-child(2) { height: 10px; animation-delay: 0.2s; }
+#bgm-indicator .wave-bar:nth-child(3) { height: 14px; animation-delay: 0.4s; }
+#bgm-indicator .wave-bar:nth-child(4) { height: 10px; animation-delay: 0.6s; }
+#bgm-indicator .wave-bar:nth-child(5) { height: 6px; animation-delay: 0.8s; }
+
+@keyframes wave {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* ===== Scene Transition Overlay ===== */
+
+#scene-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: var(--bg-deep);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+#scene-transition.active {
+  opacity: 1;
+}
+
+/* ===== Error / Empty State ===== */
+
+#error-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-deep);
+  padding: 2rem;
+}
+
+#error-overlay.hidden {
+  display: none;
+}
+
+.error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.error-title {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.error-detail {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 400px;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.error-retry {
+  padding: 0.6rem 1.5rem;
+  background: rgba(212,165,116,0.1);
+  border: 1px solid rgba(212,165,116,0.3);
+  border-radius: var(--radius-sm);
+  color: var(--accent-gold);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  transition: all var(--transition);
+}
+
+.error-retry:hover {
+  background: rgba(212,165,116,0.2);
+  border-color: var(--accent-gold);
+}
+
+/* ===== Keyboard Hint ===== */
+
+#keyboard-hint {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.7rem;
+  color: rgba(139,146,154,0.3);
+  font-family: var(--font-mono);
+  pointer-events: none;
+  letter-spacing: 0.05em;
+}
+
+.kbd {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid rgba(30,42,58,0.4);
+  border-radius: 3px;
+  background: rgba(17,24,39,0.3);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 900px) {
+  #textbox-area {
+    padding: 0 1.5rem 1.5rem;
+  }
+  #scene-info-bar {
+    padding: 0.5rem 1rem;
+    gap: 0.75rem;
+  }
+  .scene-info-item {
+    font-size: 0.7rem;
+  }
+  .character-sprite {
+    width: 120px;
+    height: 210px;
+    margin: 0 10px;
+  }
+  .sprite-body {
+    width: 90px;
+    height: 170px;
+  }
+  #scene-sidebar {
+    width: 280px;
+  }
+}
+
+@media (max-width: 640px) {
+  #textbox-area {
+    padding: 0 0.75rem 1rem;
+  }
+  #textbox {
+    padding: 1rem 1.25rem;
+    min-height: 100px;
+    max-height: 160px;
+    border-radius: 8px;
+  }
+  #dialogue-text {
+    font-size: 0.95rem;
+  }
+  #namebox {
+    padding: 0.3rem 0.9rem;
+  }
+  #namebox-text {
+    font-size: 0.8rem;
+  }
+  .character-sprite {
+    width: 90px;
+    height: 160px;
+    margin: 0 6px;
+  }
+  .sprite-body {
+    width: 68px;
+    height: 130px;
+  }
+  .sprite-name-label {
+    font-size: 0.65rem;
+    bottom: -22px;
+  }
+  #scene-sidebar {
+    width: 260px;
+  }
+  .bg-scene-title {
+    font-size: 1.1rem;
+  }
+  #scene-nav.left { left: 0.5rem; }
+  #scene-nav.right { right: 0.5rem; }
+  .nav-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+  #scene-info-bar {
+    padding: 0.4rem 0.5rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .scene-info-item {
+    font-size: 0.6rem;
+  }
+  #bgm-indicator {
+    bottom: 3.5rem;
+    right: 0.75rem;
+    font-size: 0.65rem;
+  }
+  #keyboard-hint {
+    display: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loading-ring"></div>
+  <div class="loading-text">正在载入剧本…</div>
+</div>
+
+<!-- Error Overlay -->
+<div id="error-overlay" class="hidden">
+  <div class="error-icon">📜</div>
+  <div class="error-title">无法载入剧本</div>
+  <div class="error-detail" id="error-detail">请确认后端服务器正在运行。</div>
+  <button class="error-retry" onclick="location.reload()">↻ 重试</button>
+</div>
+
+<!-- Scene Transition -->
+<div id="scene-transition"></div>
+
+<!-- Main Preview -->
+<div id="preview-container">
+
+  <!-- Background Layer -->
+  <div id="bg-layer">
+    <div class="bg-ambient" id="bg-ambient"></div>
+    <div class="bg-scene-title" id="bg-scene-title"></div>
+    <div class="bg-scene-location" id="bg-scene-location"></div>
+  </div>
+
+  <!-- Characters Layer -->
+  <div id="characters-layer"></div>
+
+  <!-- Scene Info Bar -->
+  <div id="scene-info-bar">
+    <span class="scene-info-item">
+      <span class="label">场景</span>
+      <span class="value gold" id="info-scene-num">—</span>
+      <span class="label">/</span>
+      <span class="value" id="info-total-num">—</span>
+    </span>
+    <span class="scene-info-item">
+      <span class="label">地点</span>
+      <span class="value" id="info-location">—</span>
+    </span>
+    <span class="scene-info-item">
+      <span class="label">氛围</span>
+      <span class="value" id="info-mood">—</span>
+    </span>
+    <span class="scene-info-item">
+      <span class="label">BGM</span>
+      <span class="value" id="info-bgm">—</span>
+    </span>
+  </div>
+
+  <!-- Sidebar Toggle -->
+  <button class="sidebar-toggle" id="sidebar-toggle" title="场景列表">
+    ☰
+  </button>
+
+  <!-- Sidebar -->
+  <div id="scene-sidebar">
+    <div class="sidebar-header">
+      <h3>📋 场景列表</h3>
+      <button class="sidebar-close" id="sidebar-close">✕</button>
+    </div>
+    <div class="sidebar-scene-list" id="sidebar-scene-list"></div>
+  </div>
+
+  <!-- Scene Nav -->
+  <div id="scene-nav" class="left">
+    <button class="nav-btn" id="nav-prev" title="上一个场景 (←)">‹</button>
+  </div>
+  <div id="scene-nav" class="right">
+    <button class="nav-btn" id="nav-next" title="下一个场景 (→)">›</button>
+  </div>
+
+  <!-- Textbox Area -->
+  <div id="textbox-area" tabindex="0">
+
+    <!-- Namebox -->
+    <div id="namebox">
+      <span id="namebox-text">—</span>
+    </div>
+
+    <!-- Textbox -->
+    <div id="textbox">
+      <div id="dialogue-text"></div>
+      <div id="choices-container"></div>
+      <span id="textbox-advance-hint">▼ 点击继续</span>
+    </div>
+
+  </div>
+
+  <!-- BGM Indicator -->
+  <div id="bgm-indicator">
+    <div class="wave-icon">
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+    </div>
+    <span id="bgm-mood-text">静寂</span>
+  </div>
+
+  <!-- Keyboard Hint -->
+  <div id="keyboard-hint">
+    <span><span class="kbd">Space</span> / <span class="kbd">Enter</span> 下一句</span>
+    <span><span class="kbd">←</span> <span class="kbd">→</span> 切换场景</span>
+  </div>
+
+</div>
+
+<script>
+/* ============================================ */
+/*  Galgame Studio - VN Preview Engine          */
+/* ============================================ */
+
+// ─── State ────────────────────────────────────
+
+const state = {
+  scenes: [],
+  characters: {},
+  currentIndex: 0,
+  totalScenes: 0,
+  currentLine: 0,
+  isTyping: false,
+  choicesShown: false,
+  initialized: false,
+};
+
+// ─── DOM Refs ─────────────────────────────────
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  loading:  $('loading-screen'),
+  error:    $('error-overlay'),
+  errorDetail: $('error-detail'),
+  transition: $('scene-transition'),
+  bg:       $('bg-layer'),
+  bgTitle:  $('bg-scene-title'),
+  bgLoc:    $('bg-scene-location'),
+  chars:    $('characters-layer'),
+  textbox:  $('textbox'),
+  dialog:   $('dialogue-text'),
+  namebox:  $('namebox'),
+  nameText: $('namebox-text'),
+  choices:  $('choices-container'),
+  hint:     $('textbox-advance-hint'),
+  infoNum:  $('info-scene-num'),
+  infoTotal: $('info-total-num'),
+  infoLoc:  $('info-location'),
+  infoMood: $('info-mood'),
+  infoBgm:  $('info-bgm'),
+  navPrev:  $('nav-prev'),
+  navNext:  $('nav-next'),
+  sidebar:  $('scene-sidebar'),
+  sidebarList: $('sidebar-scene-list'),
+  sidebarToggle: $('sidebar-toggle'),
+  sidebarClose: $('sidebar-close'),
+  textboxArea: $('textbox-area'),
+  bgmText:  $('bgm-mood-text'),
+  infoBar:  $('scene-info-bar'),
+};
+
+// ─── Mood Colors ─────────────────────────────
+
+const moodColors = {
+  '温馨':   { bg: '#1a1820', accent: '#d4a574', ambiance: 'rgba(108,70,40,0.08)' },
+  '悲伤':   { bg: '#0e0e18', accent: '#5b6e8c', ambiance: 'rgba(40,60,90,0.08)' },
+  '欢乐':   { bg: '#191710', accent: '#e8c97a', ambiance: 'rgba(200,170,80,0.08)' },
+  '紧张':   { bg: '#0e0e0e', accent: '#8c3a3a', ambiance: 'rgba(80,30,30,0.08)' },
+  '平静':   { bg: '#0e1418', accent: '#6db3a8', ambiance: 'rgba(60,140,130,0.06)' },
+  '浪漫':   { bg: '#1a0e14', accent: '#c97b84', ambiance: 'rgba(160,60,80,0.08)' },
+  '神秘':   { bg: '#0c0a14', accent: '#8b7ec8', ambiance: 'rgba(80,60,140,0.08)' },
+  '恐怖':   { bg: '#080808', accent: '#6b2e2e', ambiance: 'rgba(60,20,20,0.10)' },
+  '激昂':   { bg: '#14100a', accent: '#c97a30', ambiance: 'rgba(160,90,30,0.08)' },
+  '忧伤':   { bg: '#0e0e14', accent: '#6b7a8c', ambiance: 'rgba(50,60,80,0.06)' },
+  'default': { bg: '#0a0e17', accent: '#d4a574', ambiance: 'rgba(212,165,116,0.03)' },
+};
+
+const moodEmoji = {
+  '温馨': '🕯️', '悲伤': '💧', '欢乐': '✨', '紧张': '⚡',
+  '平静': '🌊', '浪漫': '🌹', '神秘': '🌙', '恐怖': '👻',
+  '激昂': '🔥', '忧伤': '🍂',
+};
+
+const moodBgm = {
+  '温馨':   '暖意',     '悲伤':   '泪雨',
+  '欢乐':   '欢快',     '紧张':   '紧迫',
+  '平静':   '悠扬',     '浪漫':   '梦色',
+  '神秘':   '迷踪',     '恐怖':   '暗影',
+  '激昂':   '雷霆',     '忧伤':   '寂寥',
+  'default': '静寂',
+};
+
+const spriteColors = [
+  { body: 'linear-gradient(135deg, #4a3f5c, #3a2f4c)', head: '#3a2f4c' },
+  { body: 'linear-gradient(135deg, #5c4a3f, #4c3a2f)', head: '#4c3a2f' },
+  { body: 'linear-gradient(135deg, #3f5c4a, #2f4c3a)', head: '#2f4c3a' },
+  { body: 'linear-gradient(135deg, #5c3f4a, #4c2f3a)', head: '#4c2f3a' },
+  { body: 'linear-gradient(135deg, #4a5c3f, #3a4c2f)', head: '#3a4c2f' },
+  { body: 'linear-gradient(135deg, #3f4a5c, #2f3a4c)', head: '#2f3a4c' },
+];
+
+// ─── BGM Mood Translation ────────────────────
+
+function getBgmText(mood) {
+  return moodBgm[mood] || moodBgm.default;
+}
+
+// ─── Color Hash for Characters ───────────────
+
+function getSpriteColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return spriteColors[Math.abs(hash) % spriteColors.length];
+}
+
+// ─── Initialization ──────────────────────────
+
+async function init() {
+  try {
+    // First, fetch the scene list for the sidebar
+    const listRes = await fetch('/api/preview/all');
+    if (!listRes.ok) {
+      let detail = `HTTP ${listRes.status}`;
+      try {
+        const errData = await listRes.json();
+        if (errData.detail) detail = errData.detail;
+      } catch(e) {}
+      throw new Error(detail);
+    }
+    const listData = await listRes.json();
+    const sceneList = listData.data ? listData.data.scenes : [];
+    if (sceneList.length === 0) {
+      throw new Error('场景数据为空。请先在主页面完成场景分析，然后重新打开预览。');
+    }
+    state.totalScenes = sceneList.length;
+
+    // Build sidebar scene entries
+    state.scenes = sceneList;
+    renderSidebar();
+
+    // Then fetch the first scene
+    await loadScene(0);
+
+    state.initialized = true;
+    els.loading.classList.add('hidden');
+
+  } catch (err) {
+    console.error('Init error:', err);
+    els.loading.classList.add('hidden');
+    els.error.classList.remove('hidden');
+    els.errorDetail.textContent = '无法载入预览：' + err.message + '\n\n💡 提示：请先在主页面完成「场景分析」步骤。';
+  }
+}
+
+// ─── Load Scene ──────────────────────────────
+
+async function loadScene(index) {
+  els.transition.classList.add('active');
+
+  // Hide info bar briefly during transition
+  els.infoBar.classList.add('hidden');
+
+  await sleep(300);
+
+  try {
+    const res = await fetch(`/api/preview?scene_index=${index}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const preview = data.preview;
+    const scene = preview.current;
+    const sceneIndex = preview.current_index;
+
+    if (!scene) {
+      throw new Error('场景数据为空');
+    }
+
+    state.currentIndex = sceneIndex;
+    state.currentLine = 0;
+    state.choicesShown = false;
+
+    // Update info bar
+    els.infoNum.textContent = sceneIndex + 1;
+    els.infoTotal.textContent = preview.total_scenes;
+    els.infoLoc.textContent = scene.location || '—';
+    els.infoMood.textContent = scene.mood || '—';
+    els.infoBgm.textContent = getBgmText(scene.mood);
+
+    // Update BGM indicator
+    els.bgmText.textContent = getBgmText(scene.mood);
+
+    // Update nav buttons
+    els.navPrev.disabled = sceneIndex <= 0;
+    els.navNext.disabled = sceneIndex >= preview.total_scenes - 1;
+
+    // Update bg
+    updateBackground(scene);
+
+    // Update characters
+    renderCharacters(scene);
+
+    // Show text
+    showDialogue(scene);
+
+    // Update sidebar active state
+    updateSidebarActive(sceneIndex);
+
+    // Show info bar after a beat
+    setTimeout(() => els.infoBar.classList.remove('hidden'), 400);
+
+  } catch (err) {
+    console.error('Load scene error:', err);
+    els.dialog.textContent = '⚠ 加载场景失败：' + err.message;
+    els.namebox.className = 'narrator';
+    els.nameText.textContent = '—';
+    els.choices.innerHTML = '';
+    els.choices.style.display = 'none';
+    els.textbox.classList.remove('with-choices');
+  }
+
+  // Fade out transition
+  await sleep(200);
+  els.transition.classList.remove('active');
+}
+
+// ─── Update Background ───────────────────────
+
+function updateBackground(scene) {
+  const mood = scene.mood || 'default';
+  const colors = moodColors[mood] || moodColors.default;
+
+  // 如果有实际背景图片就用图片，否则用氛围色
+  if (scene.bg_url) {
+    els.bg.style.transition = 'background 0.8s ease';
+    els.bg.style.backgroundImage = `url(${scene.bg_url})`;
+    els.bg.style.backgroundSize = 'cover';
+    els.bg.style.backgroundPosition = 'center center';
+  } else {
+    els.bg.style.transition = 'background 0.8s ease';
+    els.bg.style.backgroundImage = `
+      radial-gradient(ellipse at 50% 30%, ${colors.ambiance} 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(139,126,200,0.02) 0%, transparent 50%)
+    `;
+  }
+
+  // Show scene title / location as ambient text
+  els.bgTitle.textContent = scene.scene_title || '';
+  els.bgTitle.style.color = `rgba(232,227,220,0.12)`;
+
+  els.bgLoc.textContent = scene.location || '';
+  els.bgLoc.style.color = `rgba(232,227,220,0.08)`;
+}
+
+// ─── Render Characters ───────────────────────
+
+function renderCharacters(scene) {
+  els.chars.innerHTML = '';
+
+  if (!scene.characters_in_scene || Object.keys(scene.characters_in_scene).length === 0) {
+    return;
+  }
+
+  const characters = scene.characters_in_scene || {};
+  const charNames = Object.keys(characters);
+  const speakingName = scene.lines && scene.lines[0] ? scene.lines[0].speaker : null;
+
+  const total = charNames.length;
+
+  charNames.forEach((charName, i) => {
+    const charData = characters[charName];
+    const sprite = document.createElement('div');
+    sprite.className = 'character-sprite';
+    sprite.dataset.charName = charName;
+
+    const colors = getSpriteColor(charName);
+    const isSpeaking = charName === speakingName;
+    const isNarrator = !speakingName || speakingName === '旁白' || speakingName === '叙述';
+
+    if (!isNarrator) {
+      if (isSpeaking) {
+        sprite.classList.add('visible', 'speaking');
+      } else {
+        sprite.classList.add('visible', 'non-speaking');
+      }
+    } else {
+      sprite.classList.add('visible');
+      sprite.style.opacity = '0.3';
+    }
+
+    // 有真实素材就用 <img>，否则用彩色占位块
+    const hasAsset = charData.has_asset && charData.sprite_urls && charData.sprite_urls.default;
+    if (hasAsset) {
+      const img = document.createElement('img');
+      img.className = 'sprite-img';
+      img.src = charData.sprite_urls.default;
+      img.alt = charName;
+      img.style.width = '160px';
+      img.style.height = '280px';
+      img.style.objectFit = 'contain';
+      img.style.objectPosition = 'bottom center';
+      img.dataset.baseUrl = charData.sprite_urls.default.replace(/_default\.png$/i, '');
+      sprite.appendChild(img);
+    } else {
+      const body = document.createElement('div');
+      body.className = 'sprite-body';
+      body.style.background = colors.body;
+      sprite.appendChild(body);
+    }
+
+    const label = document.createElement('div');
+    label.className = 'sprite-name-label';
+    label.textContent = charName;
+    sprite.appendChild(label);
+    els.chars.appendChild(sprite);
+  });
+
+  // Stagger entrance
+  const sprites = els.chars.querySelectorAll('.character-sprite');
+  sprites.forEach((s, i) => {
+    s.style.transitionDelay = `${i * 0.08}s`;
+  });
+}
+
+// ─── Dialogue / Textbox ──────────────────────
+
+function showDialogue(scene) {
+  els.choices.innerHTML = '';
+  els.choices.style.display = 'none';
+  els.textbox.classList.remove('with-choices');
+  els.hint.classList.remove('visible');
+
+  const lines = scene.lines;
+  if (!lines || lines.length === 0) {
+    els.dialog.textContent = '(空场景)';
+    els.namebox.className = 'narrator';
+    els.nameText.textContent = '—';
+    return;
+  }
+
+  // Check if choices exist
+  if (scene.choices && scene.choices.length > 0 && state.currentLine >= lines.length) {
+    showChoices(scene);
+    return;
+  }
+
+  const line = lines[state.currentLine] || lines[0];
+  const speaker = line.speaker || scene.speaker;
+
+  // Update namebox
+  if (!speaker || speaker === '旁白' || speaker === '叙述') {
+    els.namebox.className = 'narrator';
+    els.nameText.textContent = '旁白';
+  } else {
+    els.namebox.className = '';
+    els.nameText.textContent = speaker;
+  }
+
+  // Typewriter effect
+  startTypewriter(line.text, () => {
+    // Done typing
+    state.isTyping = false;
+    if (state.currentLine < lines.length - 1 || (scene.choices && scene.choices.length > 0)) {
+      els.hint.classList.add('visible');
+    }
+  });
+
+  // Update character speaking state
+  updateSpeakingState(speaker);
+
+  // Switch sprite image for expression change (when real images exist)
+  if (speaker && speaker !== '旁白' && speaker !== '叙述' && line.expression) {
+    switchSpriteExpression(speaker, line.expression);
+  }
+}
+
+function switchSpriteExpression(speaker, expression) {
+  const sprites = els.chars.querySelectorAll('.character-sprite');
+  sprites.forEach(sprite => {
+    const label = sprite.querySelector('.sprite-name-label');
+    if (!label || label.textContent !== speaker) return;
+    
+    const img = sprite.querySelector('.sprite-img');
+    if (!img) return;  // 无真实素材，跳过
+    
+    const baseUrl = img.dataset.baseUrl;
+    if (!baseUrl) return;
+    
+    const newSrc = baseUrl + '_' + expression + '.png';
+    // 尝试加载新表情图片
+    const testImg = new Image();
+    testImg.onload = function() {
+      img.src = newSrc;
+      img.style.opacity = '1';
+    };
+    testImg.onerror = function() {
+      // 表情图片不存在，保持 default
+      img.src = baseUrl + '_default.png';
+      img.style.opacity = '1';
+    };
+    testImg.src = newSrc;
+  });
+}
+
+function updateSpeakingState(speaker) {
+  const sprites = els.chars.querySelectorAll('.character-sprite');
+  sprites.forEach(sprite => {
+    const label = sprite.querySelector('.sprite-name-label');
+    if (!label) return;
+    const name = label.textContent;
+    if (name === speaker) {
+      sprite.classList.add('speaking');
+      sprite.classList.remove('non-speaking');
+      sprite.style.opacity = '1';
+    } else {
+      sprite.classList.remove('speaking');
+      if (speaker && speaker !== '旁白' && speaker !== '叙述') {
+        sprite.classList.add('non-speaking');
+      }
+    }
+  });
+}
+
+// ─── Typewriter Effect ───────────────────────
+
+function startTypewriter(text, onDone) {
+  state.isTyping = true;
+  els.dialog.textContent = '';
+
+  let index = 0;
+  const chars = text.split('');
+  const baseDelay = 35; // ms per char
+  const varDelay = 25;  // variance
+
+  function typeNext() {
+    if (index >= chars.length) {
+      state.isTyping = false;
+      if (onDone) onDone();
+      return;
+    }
+
+    const char = chars[index];
+    els.dialog.textContent += char;
+    index++;
+
+    // Variable speed — pause a bit on punctuation
+    let delay = baseDelay + Math.random() * varDelay;
+    if ('，。！？；：、……—～'.includes(char)) {
+      delay = 120 + Math.random() * 60;
+    } else if (char === '\n') {
+      delay = 200;
+    }
+
+    setTimeout(typeNext, delay);
+  }
+
+  typeNext();
+}
+
+// ─── Show Choices ────────────────────────────
+
+function showChoices(scene) {
+  state.choicesShown = true;
+  els.dialog.textContent = '';
+  els.hint.classList.remove('visible');
+  els.namebox.className = 'narrator';
+  els.nameText.textContent = '—';
+  els.choices.style.display = 'flex';
+  els.choices.innerHTML = '';
+  els.textbox.classList.add('with-choices');
+
+  // Transition text
+  const choicePrompt = document.createElement('div');
+  choicePrompt.style.cssText = `
+    font-family: var(--font-serif);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    font-style: italic;
+  `;
+  choicePrompt.textContent = '请选择：';
+  els.choices.appendChild(choicePrompt);
+
+  scene.choices.forEach((choice, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = choice.text || `选项 ${i + 1}`;
+
+    // If there's a destination scene index
+    if (choice.destination !== undefined) {
+      btn.onclick = () => {
+        // For preview, just load that scene
+        if (typeof choice.destination === 'number') {
+          state.currentLine = 0;
+          loadScene(choice.destination);
+        } else {
+          // Try to find scene by ID
+          const targetIdx = state.scenes.findIndex(s =>
+            s.scene_id === choice.destination || s.index === choice.destination
+          );
+          if (targetIdx >= 0) {
+            state.currentLine = 0;
+            loadScene(targetIdx);
+          }
+        }
+      };
+    } else {
+      // Fallback: just advance to next scene
+      btn.onclick = () => {
+        state.currentLine = 0;
+        goNextScene();
+      };
+    }
+
+    els.choices.appendChild(btn);
+  });
+}
+
+// ─── Advance Dialogue ────────────────────────
+
+function advanceDialogue(scene) {
+  if (state.choicesShown) return;
+
+  const lines = scene.lines;
+  if (!lines || lines.length === 0) return;
+
+  // If currently typing, complete immediately
+  if (state.isTyping) {
+    // Skip to end
+    state.isTyping = false;
+    const line = lines[state.currentLine] || lines[0];
+    els.dialog.textContent = line.text;
+    els.hint.classList.add('visible');
+    return;
+  }
+
+  // Are there choices after lines?
+  const hasChoices = scene.choices && scene.choices.length > 0;
+
+  if (state.currentLine < lines.length - 1) {
+    // Next line
+    state.currentLine++;
+    showDialogue(scene);
+  } else if (hasChoices) {
+    // Show choices
+    showChoices(scene);
+  } else {
+    // End of scene, go to next
+    goNextScene();
+  }
+}
+
+// ─── Scene Navigation ────────────────────────
+
+function goPrevScene() {
+  if (state.currentIndex > 0) {
+    state.currentLine = 0;
+    loadScene(state.currentIndex - 1);
+  }
+}
+
+function goNextScene() {
+  if (state.currentIndex < state.totalScenes - 1) {
+    state.currentLine = 0;
+    loadScene(state.currentIndex + 1);
+  }
+}
+
+function goToScene(index) {
+  if (index >= 0 && index < state.totalScenes) {
+    state.currentLine = 0;
+    loadScene(index);
+    els.sidebar.classList.remove('open');
+  }
+}
+
+// ─── Sidebar ─────────────────────────────────
+
+function renderSidebar() {
+  els.sidebarList.innerHTML = '';
+
+  state.scenes.forEach((scene, i) => {
+    const item = document.createElement('div');
+    item.className = 'sidebar-scene-item';
+    item.dataset.index = i;
+
+    const mood = scene.mood || 'default';
+    const moodColor = moodColors[mood]?.accent || moodColors.default.accent;
+    const emoji = moodEmoji[mood] || '📄';
+
+    item.innerHTML = `
+      <span class="sidebar-scene-index">#${i + 1}</span>
+      <div class="sidebar-scene-info">
+        <div class="sidebar-scene-title">${escapeHtml(scene.scene_title || `场景 ${i + 1}`)}</div>
+        <div class="sidebar-scene-mood">
+          <span class="mood-dot" style="background:${moodColor}"></span>
+          ${emoji} ${scene.mood || '—'} · ${scene.location || '—'}
+        </div>
+      </div>
+    `;
+
+    item.addEventListener('click', () => goToScene(i));
+    els.sidebarList.appendChild(item);
+  });
+}
+
+function updateSidebarActive(index) {
+  const items = els.sidebarList.querySelectorAll('.sidebar-scene-item');
+  items.forEach((item, i) => {
+    item.classList.toggle('active', i === index);
+  });
+}
+
+// ─── Helpers ─────────────────────────────────
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ─── Event Listeners ─────────────────────────
+
+// Click to advance
+els.textboxArea.addEventListener('click', (e) => {
+  // Don't advance if clicking a choice button
+  if (e.target.closest('.choice-btn')) return;
+  if (state.choicesShown) return;
+
+  // Get current scene data from state
+  const idx = state.currentIndex;
+  const sceneData = state.scenes[idx];
+  if (!sceneData) return;
+
+  // We need full scene data; fetch the scene with lines
+  // Actually let's use a cached scene approach or re-fetch
+  advanceDialogueWithCurrentScene();
+});
+
+let cachedSceneData = null;
+
+async function advanceDialogueWithCurrentScene() {
+  if (cachedSceneData && cachedSceneData.lines) {
+    advanceDialogue(cachedSceneData);
+  } else {
+    try {
+      const res = await fetch(`/api/preview?scene_index=${state.currentIndex}`);
+      const data = await res.json();
+      const preview = data.preview;
+      const scene = preview.current;
+      cachedSceneData = scene;
+      advanceDialogue(scene);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  switch (e.key) {
+    case ' ':
+    case 'Enter':
+      e.preventDefault();
+      if (state.choicesShown) return;
+      advanceDialogueWithCurrentScene();
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      goPrevScene();
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      goNextScene();
+      break;
+    case 'Escape':
+      els.sidebar.classList.toggle('open');
+      break;
+  }
+});
+
+// Nav buttons
+els.navPrev.addEventListener('click', goPrevScene);
+els.navNext.addEventListener('click', goNextScene);
+
+// Sidebar toggle
+els.sidebarToggle.addEventListener('click', () => {
+  els.sidebar.classList.toggle('open');
+});
+els.sidebarClose.addEventListener('click', () => {
+  els.sidebar.classList.remove('open');
+});
+
+// Click outside sidebar to close
+document.addEventListener('click', (e) => {
+  if (els.sidebar.classList.contains('open')) {
+    if (!els.sidebar.contains(e.target) && e.target !== els.sidebarToggle) {
+      els.sidebar.classList.remove('open');
+    }
+  }
+});
+
+// ─── Cached scene on loadScene ───────────────
+
+const origLoadScene = loadScene;
+loadScene = async function(index) {
+  cachedSceneData = null;
+  await origLoadScene(index);
+  // Refetch to cache full scene data
+  try {
+    const res = await fetch(`/api/preview?scene_index=${index}`);
+    const data = await res.json();
+    const preview = data.preview;
+    cachedSceneData = preview.current;
+  } catch (err) {
+    console.error('Cache fetch error:', err);
+  }
+};
+
+// ─── Start ───────────────────────────────────
+
+init();
+</script>
+</body>
+</html>
